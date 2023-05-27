@@ -7093,4 +7093,5 @@
 #include "modular_zubbers\code\modules\status_indicators\status_indicator_pref.dm"
 #include "modular_zubbers\code\modules\surgery\bodyparts\species_parts\misc_bodyparts.dm"
 #include "modular_zubbers\code\modules\vending\wardrobe.dm"
+#include "modular_zubbers\code\modules\voicesfx\voice.dm"
 // END_INCLUDE
