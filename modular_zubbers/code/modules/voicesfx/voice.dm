@@ -11,22 +11,24 @@
 		voicebox.speak_sfx(message)
 
 /datum/voicebox/
-	var/soundfile = "modules/emotes/sound/voice/weh.ogg" // Subtypes change this.
+	var/soundfile = 'modular_skyrat/modules/emotes/sound/voice/weh.ogg' // Subtypes change this.
 	var/mob/parent // Ref to owner
 	var/blabbing = FALSE // Are we talking?
 
 /datum/voicebox/proc/speak_sfx(passed_msg)
 	ASYNC
 	blabbing = TRUE
-	for(var/i in (length_char(passed_msg) / WEH_DIVIDER))
+	var/debug
+	for(var/i=0 to clamp((length_char(passed_msg) / WEH_DIVIDER), 1, 50))
 		i++
-
-		playsound(src, soundfile, 50, TRUE)
+		debug++
+		playsound(parent, soundfile, 50, TRUE)
 		sleep(WEH_DIVIDER)
 		. = TRUE
+	message_admins("[parent] said [passed_msg] but [debug] was the length and did it work?")
 	blabbing = FALSE
 	if(!.)
-		return
+		return FALSE
 
 /datum/voicebox/lizard
 	soundfile
