@@ -1,10 +1,10 @@
 
 GLOBAL_LIST_INIT(potential_indicators, list(
-	STUNNED = image(icon = 'modular_zubbers/icons/mob/status_indicators.dmi', icon_state = STUNNED),
-	WEAKEN = image(icon = 'modular_zubbers/icons/mob/status_indicators.dmi', icon_state = WEAKEN),
-	PARALYSIS = image(icon = 'modular_zubbers/icons/mob/status_indicators.dmi', icon_state = PARALYSIS),
-	SLEEPING = image(icon = 'modular_zubbers/icons/mob/status_indicators.dmi', icon_state = SLEEPING),
-	CONFUSED = image(icon = 'modular_zubbers/icons/mob/status_indicators.dmi', icon_state = CONFUSED),
+	STUNNED = icon('modular_zubbers/icons/mob/status_indicators.dmi', STUNNED),
+	WEAKEN = icon('modular_zubbers/icons/mob/status_indicators.dmi', WEAKEN),
+	PARALYSIS = icon('modular_zubbers/icons/mob/status_indicators.dmi', PARALYSIS),
+	SLEEPING = icon('modular_zubbers/icons/mob/status_indicators.dmi', SLEEPING),
+	CONFUSED = icon('modular_zubbers/icons/mob/status_indicators.dmi', CONFUSED),
 ))
 
 /datum/component/status_indicator
@@ -63,13 +63,8 @@ GLOBAL_LIST_INIT(potential_indicators, list(
 	RegisterSignal(parent, COMSIG_LIVING_STATUS_PARALYZE, PROC_REF(status_indicator_evaluate))
 	RegisterSignal(parent, COMSIG_LIVING_STATUS_IMMOBILIZE, PROC_REF(status_indicator_evaluate))
 	RegisterSignal(parent, COMSIG_LIVING_STATUS_UNCONSCIOUS, PROC_REF(status_indicator_evaluate))
-	RegisterSignal(parent, COMSIG_MOB_LOGIN, PROC_REF(apply_pref_on_login))
 
-/datum/component/status_indicator/proc/apply_pref_on_login()
-	var/atom/movable/screen/plane_master/game_world_upper_fov_hidden/local_status = locate() in attached_mob.client.screen
-	if(local_status)
-		. = attached_mob.client.prefs.read_preference(/datum/preference/toggle/enable_status_indicators)
-		local_status.alpha = (.) ? 255 : 0
+
 
 /datum/component/status_indicator/UnregisterFromParent()
 	QDEL_NULL(status_indicators)
@@ -120,87 +115,37 @@ GLOBAL_LIST_INIT(potential_indicators, list(
 	SIGNAL_HANDLER
 	is_confused() ? add_status_indicator(CONFUSED) : remove_status_indicator(CONFUSED)
 
-/// Adds a status indicator to the mob. Takes an image as an argument. If it exists, it won't dupe it.
-/datum/component/status_indicator/proc/add_status_indicator(image/prospective_indicator)
+/// Adds a status indicator to the mob. Takes an icon as an argument. If it exists, it won't dupe it.
+/datum/component/status_indicator/proc/add_status_indicator(icon/prospective_indicator)
 	if(get_status_indicator(prospective_indicator)) // No duplicates, please.
 		return
-
+	var/icon/adding = new/icon('modular_zubbers/icons/mob/status_indicators.dmi', prospective_indicator)
+	attached_mob.add_filter(name = prospective_indicator, params = list(
+	type = "layer",
+	icon = adding,
+	flags = FILTER_OVERLAY,
+	))
 	prospective_indicator = GLOB.potential_indicators[prospective_indicator]
-	prospective_indicator.loc = src
 	LAZYADD(status_indicators, prospective_indicator)
-	handle_status_indicators(prospective_indicator)
 
 /// Similar to add_status_indicator() but removes it instead, and nulls the list if it becomes empty as a result.
-/datum/component/status_indicator/proc/remove_status_indicator(image/prospective_indicator)
+/datum/component/status_indicator/proc/remove_status_indicator(icon/prospective_indicator)
 	prospective_indicator = get_status_indicator(prospective_indicator)
-
-	attached_mob.cut_overlay(prospective_indicator)
+	attached_mob.remove_filter(prospective_indicator)
 	LAZYREMOVE(status_indicators, prospective_indicator)
-	handle_status_indicators(prospective_indicator)
+
 
 /// Finds a status indicator on a mob.
-/datum/component/status_indicator/proc/get_status_indicator(image/prospective_indicator)
-
-	for(var/image/indicator in status_indicators)
-		if(indicator.icon_state == prospective_indicator)
-			return indicator
+/datum/component/status_indicator/proc/get_status_indicator(icon/prospective_indicator)
 	return LAZYACCESS(status_indicators, LAZYFIND(status_indicators, prospective_indicator))
 
 /// Cuts all the indicators on a mob in a loop.
 /datum/component/status_indicator/proc/cut_indicators_overlays()
 	SIGNAL_HANDLER
 	for(var/prospective_indicator in status_indicators)
-		attached_mob.cut_overlay(prospective_indicator)
+		var/icon/indicator = get_status_indicator(prospective_indicator)
+		attached_mob.remove_filter(indicator)
 
-/// Refreshes the indicators over a mob's head. Should only be called when adding or removing a status indicator with the above procs,
-/// or when the mob changes size visually for some reason.
-/datum/component/status_indicator/proc/handle_status_indicators(image/prospective_indicator)
-	// First, get rid of all the overlays.
-
-	cut_indicators_overlays()
-
-	if(!LAZYLEN(status_indicators))
-		return
-
-	var/mob/living/carbon/my_carbon_mob = attached_mob
-
-	var/icon_scale = get_icon_scale(my_carbon_mob)
-
-	if(my_carbon_mob.stat == DEAD)
-		cut_indicators_overlays()
-		return
-
-	// Now put them back on in the right spot.
-	var/our_sprite_x = 16 * icon_scale
-	var/our_sprite_y = 24 * icon_scale
-
-	var/x_offset = our_sprite_x // Add your own offset here later if you want.
-	var/y_offset = our_sprite_y + STATUS_INDICATOR_Y_OFFSET
-
-	// Calculates how 'long' the row of indicators and the margin between them should be.
-	// The goal is to have the center of that row be horizontally aligned with the sprite's center.
-	var/expected_status_indicator_length = (STATUS_INDICATOR_ICON_X_SIZE * status_indicators.len) + (STATUS_INDICATOR_ICON_MARGIN * max(status_indicators.len - 1, 0))
-	var/current_x_position = (x_offset / 2) - (expected_status_indicator_length / 2)
-
-	// In /mob/living's `update_transform()`, the sprite is horizontally shifted when scaled up, so that the center of the sprite doesn't move to the right.
-	// Because of that, this adjustment needs to happen with the future indicator row as well, or it will look bad.
-	current_x_position -= 16 * (icon_scale - DEFAULT_MOB_SCALE)
-
-	// Now the indicator row can actually be built.
-	for(var/all_indicators in status_indicators)
-		var/image/indicator = all_indicators
-
-		// This is a semi-HUD element, in a similar manner as medHUDs, in that they're 'above' everything else in the world,
-		// but don't pierce obfuscation layers such as blindness or darkness, unlike actual HUD elements like inventory slots.
-		indicator.plane = GAME_PLANE_UPPER_FOV_HIDDEN
-		indicator.layer = STATUS_LAYER
-		indicator.appearance_flags = PIXEL_SCALE|TILE_BOUND|NO_CLIENT_COLOR|RESET_COLOR|RESET_ALPHA|RESET_TRANSFORM|KEEP_APART
-		indicator.pixel_y = y_offset
-		indicator.pixel_x = current_x_position
-		my_carbon_mob.add_overlay(indicator)
-		// Adding the margin space every time saves a conditional check on the last iteration,
-		// and it won't cause any issues since no more icons will be added, and the var is not used for anything else.
-		current_x_position += STATUS_INDICATOR_ICON_X_SIZE + STATUS_INDICATOR_ICON_MARGIN
 
 /datum/component/status_indicator/proc/get_icon_scale(livingmob)
 	if(!iscarbon(livingmob)) // normal mobs are always 1 for scale - hopefully all borgs and simplemobs get this one
