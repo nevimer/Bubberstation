@@ -353,6 +353,10 @@
 	if(QDELETED(B)) //Give it up
 		return
 	B.bloodiness = min((B.bloodiness + BLOOD_AMOUNT_PER_DECAL), BLOOD_POOL_MAX)
+	if(B.bloodiness)
+		var/datum/reagent/blood/bloodpool = new /datum/reagent/blood
+		bloodpool.volume = B.bloodiness / 30
+		T.add_liquid(bloodpool, bloodpool.volume)
 	B.transfer_mob_blood_dna(src) //give blood info to the blood decal.
 	if(temp_blood_DNA)
 		B.add_blood_DNA(temp_blood_DNA)
