@@ -8,16 +8,16 @@ SUBSYSTEM_DEF(nomming)
 		return
 	for(var/i in GLOB.bellies as mob)
 
-/proc/get_prefered_vore_organ()
+/proc/get_prefered_container_organ()
 	var/mob/living/carbon/caller = usr
 	if(!istype(caller))
 		return
-	var/preferred_vore_organ = caller.get_organ_slot(ORGAN_SLOT_STOMACH) // that's right. in the future we can pick the funny organs.
+	var/preferred_container = caller.resolve_container_pref() // that's right. in the future we can pick the funny organs.
 
-/datum/component/vore
-/datum/component/vore/RegisterWithParent()
+/datum/component/container
+/datum/component/container/RegisterWithParent()
 
-	parent = get_prefered_vore_organ(src) | src // Register the preferred organ, or just be the mob if basicmob
+	parent = get_prefered_container_organ(src) | src // Register the preferred organ, or just be the mob if basicmob
 
 
 /mob/
@@ -26,10 +26,13 @@ SUBSYSTEM_DEF(nomming)
 
 /mob/proc/enter_the_nom(mob/nomminee)
 	nomminee |= GLOB.atoms_within_bellies
-	var/datum/component/nomming = GetComponent(/datum/component/vore)
+	var/datum/component/container/nomming = GetComponent(/datum/component/container)
+
 /mob/proc/leave_the_nom(mob/nomminee)
 	nomminee -= GLOB.atoms_within_bellies
-/mob/proc/exist
+/mob/proc/exist_within()
+	SIGNAL_HANDLER
+
 
 
 
