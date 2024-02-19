@@ -4,6 +4,19 @@
 	welcome_text = "A predictable failure, Dr. Freeman."
 	population_min = 35
 
+	var/crew_per_antag = 9 //Basically this means for every 9 crew, spawn 1 antag.
+	//9 crew: 1 antagonist
+	//18 crew: 2 antagonists
+	//27 crew: 3 antagonists
+	//36 crew: 4 antagonists
+	//45 crew: 5 antagonists
+	//54 crew: 6 antagonists
+	//63 crew: 7 antagonists
+	//72 crew: 8 antagonists
+	//81 crew: 9 antagonists
+	//90 crew: 10 antagonists
+	//REMEMBER: This is CREW pop, NOT server pop
+
 	tag_multipliers = list(
 
 		TAG_COMBAT = 0.25, //Already got this from the constant antag spawns.
@@ -70,18 +83,8 @@
 		if(antagonist_score)
 			total_antagonist_score += round(antagonist_score,0.25)
 
-	total_crew_score *= (1/9) //8 crewmembers are equal to one antagonists. Remember that security count double, as well as heads.
-	//9 crew: 1 antagonist
-	//18 crew: 2 antagonists
-	//27 crew: 3 antagonists
-	//36 crew: 4 antagonists
-	//45 crew: 5 antagonists
-	//54 crew: 6 antagonists
-	//63 crew: 7 antagonists
-	//72 crew: 8 antagonists
-	//81 crew: 9 antagonists
-	//90 crew: 10 antagonists
-	//REMEMBER: This is CREW pop, NOT server pop
+	total_crew_score *= (1/crew_per_antag) // Remember that security count double, as well as heads.
+
 
 	if(do_debug)
 		debug_world("Attempted to spawn antagonists. Crew score: [total_crew_score], Antagonist Score: [total_antagonist_score], Result: [total_antagonist_score < total_crew_score ? "Spawn antagonists." : "Do not spawn antagonists."]")
