@@ -1,20 +1,24 @@
 /datum/unit_test/predictable_storyteller
-	var/expected_result = 0
+	var/expected_result = 0.35
 
 /datum/unit_test/predictable_storyteller/Run()
 
-	var/list/testing_minds = list()
-	for(var/i=1,i<=20,i++)
+	var/datum/job/assistant_job = SSjob.GetJobType(/datum/job/assistant)
+	var/datum/job/head_of_security_job = SSjob.GetJobType(/datum/job/head_of_security)
 
-		var/mob/living/carbon/human/dummy = allocate(/mob/living/carbon/human/consistent, run_loc_floor_bottom_left)
+	var/list/testing_minds = list()
+	for(var/i=1,i<=10,i++)
+
+		var/mob/living/carbon/human/dummy = allocate(/mob/living/carbon/human/consistent)
 		dummy.mind_initialize()
-		dummy.mock_client = new()
 
 		if(i<=2)
-			dummy.apply_prefs_job(dummy.mock_client, SSjob.GetJobType(/datum/job/head_of_security))
-			dummy.mind.add_antag_datum(/datum/antagonist/traitor)
+			dummy.mind.set_assigned_role(head_of_security_job)
 		else
-			dummy.apply_prefs_job(dummy.mock_client, SSjob.GetJobType(/datum/job/assistant))
+			dummy.mind.set_assigned_role(assistant_job)
+
+		if(i==2 || i==3) //Should result in 1 antag hos, 1 antag assistant
+			dummy.mind.add_antag_datum(/datum/antagonist/traitor)
 
 		testing_minds += dummy.mind
 

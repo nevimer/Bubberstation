@@ -62,7 +62,7 @@
 		for(var/datum/antagonist/antag as anything in mob_mind.antag_datums)
 			if( !antag.show_in_antagpanel || (antag.antag_flags & FLAG_FAKE_ANTAG)) //For unimportant antags, like ashwalkers or valentines. You're not a real antag.
 				continue
-			antagonist_score += 1/max(1,1 + antagonist_score) //This means if you're a double antag (changeling + traitor, for example) you could extra, but not as much.
+			antagonist_score += 1
 			//We add to the total antagonist score later.
 
 		if(mob_mind.assigned_role)
@@ -73,20 +73,21 @@
 					crew_score *= 1.5
 				if(current_job.auto_deadmin_role_flags & DEADMIN_POSITION_HEAD)
 					crew_score *= 1.5
-				if(antagonist_score > 0) //If you're an antagonist as an important role, then holy fuck.
-					antagonist_score *= 3
+				if(antagonist_score > 0)
+					if(crew_score > 1)
+						antagonist_score *= crew_score //If you're an antagonist as an important role, then you're going to cause some chaos.
 				else
 					if(mob_mind.current && mob_mind.current.stat == DEAD)
-						crew_score *= -0.25 //If you're dead, then usually some chaos must be happening and you in fact are a burden towards the crew.
-					total_crew_score += round(crew_score,0.25)
+						crew_score *= -0.25 //If you're dead, then usually some chaos must be happening and you in fact are a slight burden towards the crew.
+					total_crew_score += crew_score
 
 		if(antagonist_score)
-			total_antagonist_score += round(antagonist_score,0.25)
+			total_antagonist_score += antagonist_score
 
 	if(total_crew_score <= 0)
 		return INFINITY //Force infinity.
 
-	return round(total_antagonist_score/total_crew_score,0.25)
+	return round(total_antagonist_score/total_crew_score,0.01)
 
 
 /datum/storyteller/predictable/handle_tracks()
