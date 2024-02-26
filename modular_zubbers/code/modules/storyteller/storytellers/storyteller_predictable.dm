@@ -138,10 +138,13 @@
 
 		if(COOLDOWN_FINISHED(src,major_event_cooldown) && find_and_buy_event_from_track(EVENT_TRACK_MAJOR))
 			COOLDOWN_START(src, major_event_cooldown, major_event_delay)
+			COOLDOWN_START(src, moderate_event_cooldown, moderate_event_delay)
+			COOLDOWN_START(src, mundane_event_cooldown, mundane_event_delay)
 			return TRUE
 
 	if(COOLDOWN_FINISHED(src,moderate_event_cooldown) && find_and_buy_event_from_track(EVENT_TRACK_MODERATE))
 		COOLDOWN_START(src, moderate_event_cooldown, moderate_event_delay)
+		COOLDOWN_START(src, mundane_event_cooldown, mundane_event_delay)
 		return TRUE
 
 	if(COOLDOWN_FINISHED(src,mundane_event_cooldown) && find_and_buy_event_from_track(EVENT_TRACK_MUNDANE))
