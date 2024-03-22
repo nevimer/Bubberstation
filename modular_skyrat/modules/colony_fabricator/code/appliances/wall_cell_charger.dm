@@ -5,7 +5,7 @@
 	icon_state = "wall_charger"
 	base_icon_state = "wall_charger"
 	circuit = null
-	flags_1 = NODECONSTRUCT_1
+	obj_flags = CAN_BE_HIT | NO_DECONSTRUCTION
 	max_batteries = 3
 	charge_rate = 750
 	/// The item we turn into when repacked
@@ -27,10 +27,9 @@ MAPPING_DIRECTIONAL_HELPERS(/obj/machinery/cell_charger_multi/wall_mounted, 29)
 		deconstruct(TRUE)
 		return
 
-/obj/machinery/cell_charger_multi/wall_mounted/deconstruct(disassembled)
+/obj/machinery/cell_charger_multi/wall_mounted/on_deconstruction(disassembled)
 	if(disassembled)
 		new repacked_type(drop_location())
-	return ..()
 
 /obj/machinery/cell_charger_multi/wall_mounted/RefreshParts()
 	. = ..()

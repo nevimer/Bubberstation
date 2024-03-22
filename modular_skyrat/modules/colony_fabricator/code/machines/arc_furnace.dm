@@ -18,7 +18,7 @@
 	circuit = null
 	light_color = LIGHT_COLOR_BRIGHT_YELLOW
 	light_power = 10
-	flags_1 = NODECONSTRUCT_1
+	obj_flags = CAN_BE_HIT | NO_DECONSTRUCTION
 	active_power_usage = BASE_MACHINE_ACTIVE_CONSUMPTION * 10 // This baby consumes so much power
 	/// The item we turn into when repacked
 	var/repacked_type = /obj/item/flatpacked_machine/arc_furnace
@@ -46,9 +46,8 @@
 	if(length(contents))
 		. += span_notice("It has <b>[contents[1]]</b> sitting in it.")
 
-/obj/machinery/arc_furnace/deconstruct(disassembled = TRUE)
+/obj/machinery/arc_furnace/on_deconstruction(disassembled)
 	eject_contents()
-	return ..()
 
 /obj/machinery/arc_furnace/update_appearance()
 	. = ..()

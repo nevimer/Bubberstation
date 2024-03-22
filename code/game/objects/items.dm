@@ -493,8 +493,9 @@
 	if(!.)
 		return
 
-	if(href_list[VV_HK_ADD_FANTASY_AFFIX] && check_rights(R_FUN))
-
+	if(href_list[VV_HK_ADD_FANTASY_AFFIX])
+		if(!check_rights(R_FUN))
+			return
 		//gathering all affixes that make sense for this item
 		var/list/prefixes = list()
 		var/list/suffixes = list()
@@ -507,13 +508,11 @@
 					prefixes[affix_choice.name] = affix_choice
 				else
 					suffixes[affix_choice.name] = affix_choice
-
 		//making it more presentable here
 		var/list/affixes = list("---PREFIXES---")
 		affixes.Add(prefixes)
 		affixes.Add("---SUFFIXES---")
 		affixes.Add(suffixes)
-
 		//admin picks, cleanup the ones we didn't do and handle chosen
 		var/picked_affix_name = tgui_input_list(usr, "Affix to add to [src]", "Enchant [src]", affixes)
 		if(isnull(picked_affix_name))
@@ -527,7 +526,6 @@
 			fantasy_quality++
 		else
 			fantasy_quality--
-
 		//name gets changed by the component so i want to store it for feedback later
 		var/before_name = name
 		//naming these vars that i'm putting into the fantasy component to make it more readable
@@ -537,7 +535,6 @@
 		if(AddComponent(/datum/component/fantasy, fantasy_quality, list(affix), canFail, announce) == COMPONENT_INCOMPATIBLE)
 			to_chat(usr, span_warning("Fantasy component not compatible with [src]."))
 			CRASH("fantasy component incompatible with object of type: [type]")
-
 		to_chat(usr, span_notice("[before_name] now has [picked_affix_name]!"))
 		log_admin("[key_name(usr)] has added [picked_affix_name] fantasy affix to [before_name]")
 		message_admins(span_notice("[key_name(usr)] has added [picked_affix_name] fantasy affix to [before_name]"))
@@ -548,20 +545,20 @@
 		return
 	return attempt_pickup(user)
 
-/obj/item/proc/attempt_pickup(mob/user)
+/obj/item/proc/attempt_pickup(mob/user, skip_grav = FALSE)
 	. = TRUE
 
 	if(!(interaction_flags_item & INTERACT_ITEM_ATTACK_HAND_PICKUP)) //See if we're supposed to auto pickup.
 		return
 
-	//Heavy gravity makes picking up things very slow.
-	var/grav = user.has_gravity()
-	if(grav > STANDARD_GRAVITY)
-		var/grav_power = min(3,grav - STANDARD_GRAVITY)
-		to_chat(user,span_notice("You start picking up [src]..."))
-		if(!do_after(user, 30 * grav_power, src))
-			return
-
+	if(!skip_grav)
+		//Heavy gravity makes picking up things very slow.
+		var/grav = user.has_gravity()
+		if(grav > STANDARD_GRAVITY)
+			var/grav_power = min(3,grav - STANDARD_GRAVITY)
+			to_chat(user,span_notice("You start picking up [src]..."))
+			if(!do_after(user, 30 * grav_power, src))
+				return
 
 	//If the item is in a storage item, take it out
 	var/outside_storage = !loc.atom_storage
@@ -793,16 +790,17 @@
 
 /obj/item/on_exit_storage(datum/storage/master_storage)
 	. = ..()
-	var/atom/location = master_storage.real_location?.resolve()
-	do_drop_animation(location)
+	do_drop_animation(master_storage.parent)
 
 /obj/item/throw_impact(atom/hit_atom, datum/thrownthing/throwingdatum)
 	if(QDELETED(hit_atom))
 		return
-	if(SEND_SIGNAL(src, COMSIG_MOVABLE_IMPACT, hit_atom, throwingdatum) & COMPONENT_MOVABLE_IMPACT_NEVERMIND)
+	if(SEND_SIGNAL(src, COMSIG_MOVABLE_PRE_IMPACT, hit_atom, throwingdatum) & COMPONENT_MOVABLE_IMPACT_NEVERMIND)
 		return
 	if(SEND_SIGNAL(hit_atom, COMSIG_ATOM_PREHITBY, src, throwingdatum) & COMSIG_HIT_PREVENTED)
 		return
+
+	SEND_SIGNAL(src, COMSIG_MOVABLE_IMPACT, hit_atom, throwingdatum)
 	if(get_temperature() && isliving(hit_atom))
 		var/mob/living/L = hit_atom
 		L.ignite_mob()
@@ -1093,7 +1091,7 @@
 			skill_modifier = user.mind.get_skill_modifier(/datum/skill/mining, SKILL_SPEED_MODIFIER)
 
 			if(user.mind.get_skill_level(/datum/skill/mining) >= SKILL_LEVEL_JOURNEYMAN && prob(user.mind.get_skill_modifier(/datum/skill/mining, SKILL_PROBS_MODIFIER))) // we check if the skill level is greater than Journeyman and then we check for the probality for that specific level.
-				mineral_scan_pulse(get_turf(user), SKILL_LEVEL_JOURNEYMAN - 2) //SKILL_LEVEL_JOURNEYMAN = 3 So to get range of 1+ we have to subtract 2 from it,.
+				mineral_scan_pulse(get_turf(user), SKILL_LEVEL_JOURNEYMAN - 2, scanner = src) //SKILL_LEVEL_JOURNEYMAN = 3 So to get range of 1+ we have to subtract 2 from it,.
 
 	delay *= toolspeed * skill_modifier
 
@@ -1177,7 +1175,8 @@
 	return ..()
 
 /obj/item/proc/embedded(atom/embedded_target, obj/item/bodypart/part)
-	return
+	SHOULD_CALL_PARENT(TRUE)
+	SEND_SIGNAL(src, COMSIG_ITEM_EMBEDDED, embedded_target, part)
 
 /obj/item/proc/unembedded()
 	if(item_flags & DROPDEL && !QDELETED(src))
@@ -1206,6 +1205,8 @@
 
 ///In case we want to do something special (like self delete) upon failing to embed in something.
 /obj/item/proc/failedEmbed()
+	SHOULD_CALL_PARENT(TRUE)
+	SEND_SIGNAL(src, COMSIG_ITEM_FAILED_EMBED)
 	if(item_flags & DROPDEL && !QDELETED(src))
 		qdel(src)
 
@@ -1732,3 +1733,6 @@
 	if (!isnull(tool_behaviour))
 		return list(tool_behaviour)
 	return null
+
+/obj/item/animate_atom_living(mob/living/owner)
+	new /mob/living/simple_animal/hostile/mimic/copy(drop_location(), src, owner)

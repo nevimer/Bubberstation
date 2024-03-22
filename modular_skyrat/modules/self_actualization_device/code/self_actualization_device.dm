@@ -14,7 +14,7 @@
 
 /obj/machinery/self_actualization_device
 	name = "Self-Actualization Device"
-	desc = "A state of the art medical device that can restore someone's phyiscal appearence to the last known database backup."
+	desc = "A state of the art medical device that can restore someone's physical appearance to the last known database backup."
 	icon = 'modular_skyrat/modules/self_actualization_device/icons/self_actualization_device.dmi'
 	icon_state = "sad_open"
 	circuit = /obj/item/circuitboard/machine/self_actualization_device
@@ -168,9 +168,8 @@
 			message_admins("[key_name_admin(patient)] has used the Self-Actualization Device, and changed the name of their character. \
 			Original Name: [original_name], New Name: [patient.dna.real_name]. \
 			This may be a false positive from changing from a humanized monkey into a character, so be careful.")
+		SSquirks.AssignQuirks(patient, patient.client)
 		playsound(src, 'sound/machines/microwave/microwave-end.ogg', 100, FALSE)
-
-		SSquirks.AssignQuirks(patient, patient.client) // BUBBER EDIT ADDITON
 
 	open_machine()
 

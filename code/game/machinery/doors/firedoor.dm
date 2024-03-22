@@ -24,8 +24,6 @@
 
 	COOLDOWN_DECLARE(activation_cooldown)
 
-	///Trick to get the glowing overlay visible from a distance
-	luminosity = 1
 	///X offset for the overlay lights, so that they line up with the thin border firelocks
 	var/light_xoffset = 0
 	///Y offset for the overlay lights, so that they line up with the thin border firelocks
@@ -76,9 +74,12 @@
 
 /obj/machinery/door/firedoor/Initialize(mapload)
 	. = ..()
+	id_tag = assign_random_name()
 	soundloop = new(src, FALSE)
 	CalculateAffectingAreas()
 	my_area = get_area(src)
+	if(name == initial(name))
+		update_name()
 	if(!merger_typecache)
 		merger_typecache = typecacheof(/obj/machinery/door/firedoor)
 
@@ -181,6 +182,10 @@
 				return CONTEXTUAL_SCREENTIP_SET
 
 	return .
+
+/obj/machinery/door/firedoor/update_name(updates)
+	. = ..()
+	name = "[get_area_name(my_area)] [initial(name)] [id_tag]"
 
 /**
  * Calculates what areas we should worry about.
@@ -326,6 +331,8 @@ BUBBERSTATION CHANGE: FIRELOCKS ARE NO LONGER ARE FREE-THINKERS. */
 		return //We're already active
 	soundloop.start()
 	is_playing_alarm = TRUE
+	my_area.fault_status = AREA_FAULT_AUTOMATIC
+	my_area.fault_location = name
 	var/datum/merger/merge_group = GetMergeGroup(merger_id, merger_typecache)
 	for(var/obj/machinery/door/firedoor/buddylock as anything in merge_group.members)
 		buddylock.activate(code)
@@ -338,6 +345,8 @@ BUBBERSTATION CHANGE: FIRELOCKS ARE NO LONGER ARE FREE-THINKERS. */
 /obj/machinery/door/firedoor/proc/start_deactivation_process()
 	soundloop.stop()
 	is_playing_alarm = FALSE
+	my_area.fault_status = AREA_FAULT_NONE
+	my_area.fault_location = null
 	var/datum/merger/merge_group = GetMergeGroup(merger_id, merger_typecache)
 	for(var/obj/machinery/door/firedoor/buddylock as anything in merge_group.members)
 		buddylock.reset()
@@ -374,7 +383,7 @@ BUBBERSTATION CHANGE: FIRELOCKS ARE NO LONGER ARE FREE-THINKERS. */
 		if(LAZYLEN(place.active_firelocks) != 1)
 			continue
 		//if we're the first to activate in this particular area
-		place.set_fire_effect(TRUE) //bathe in red
+		place.set_fire_effect(TRUE, AREA_FAULT_AUTOMATIC, name) //bathe in red
 		if(place == my_area)
 			// We'll limit our reporting to just the area we're on. If the issue affects bordering areas, they can report it themselves
 			place.alarm_manager.send_alarm(ALARM_FIRE, place)
@@ -434,7 +443,7 @@ BUBBERSTATION CHANGE: FIRELOCKS ARE NO LONGER ARE FREE-THINKERS. */
 		LAZYREMOVE(place.active_firelocks, src)
 		if(LAZYLEN(place.active_firelocks)) // If we were the last firelock still active, clear the area effects
 			continue
-		place.set_fire_effect(FALSE)
+		place.set_fire_effect(FALSE, AREA_FAULT_NONE, name)
 		if(place == my_area)
 			place.alarm_manager.clear_alarm(ALARM_FIRE, place)
 
@@ -496,17 +505,17 @@ BUBBERSTATION CHANGE: FIRELOCKS ARE NO LONGER ARE FREE-THINKERS. */
 
 	if(boltslocked)
 		to_chat(user, span_notice("There are screws locking the bolts in place!"))
-		return TOOL_ACT_TOOLTYPE_SUCCESS
+		return ITEM_INTERACT_SUCCESS
 	tool.play_tool_sound(src)
 	user.visible_message(span_notice("[user] starts undoing [src]'s bolts..."), \
 		span_notice("You start unfastening [src]'s floor bolts..."))
 	if(!tool.use_tool(src, user, DEFAULT_STEP_TIME))
-		return TOOL_ACT_TOOLTYPE_SUCCESS
+		return ITEM_INTERACT_SUCCESS
 	playsound(get_turf(src), 'sound/items/deconstruct.ogg', 50, TRUE)
 	user.visible_message(span_notice("[user] unfastens [src]'s bolts."), \
 		span_notice("You undo [src]'s floor bolts."))
 	deconstruct(TRUE)
-	return TOOL_ACT_TOOLTYPE_SUCCESS
+	return ITEM_INTERACT_SUCCESS
 
 /obj/machinery/door/firedoor/screwdriver_act(mob/living/user, obj/item/tool)
 	if(operating || !welded)
@@ -515,7 +524,7 @@ BUBBERSTATION CHANGE: FIRELOCKS ARE NO LONGER ARE FREE-THINKERS. */
 				span_notice("You [boltslocked ? "unlock" : "lock"] [src]'s floor bolts."))
 	tool.play_tool_sound(src)
 	boltslocked = !boltslocked
-	return TOOL_ACT_TOOLTYPE_SUCCESS
+	return ITEM_INTERACT_SUCCESS
 
 /obj/machinery/door/firedoor/try_to_activate_door(mob/user, access_bypass = FALSE)
 	return
@@ -663,20 +672,18 @@ BUBBERSTATION CHANGE: FIRELOCKS ARE NO LONGER ARE FREE-THINKERS. */
 	if(old_activity != active) //Something changed while we were sleeping
 		correct_state() //So we should re-evaluate our state
 
-/obj/machinery/door/firedoor/deconstruct(disassembled = TRUE)
-	if(!(flags_1 & NODECONSTRUCT_1))
-		var/turf/targetloc = get_turf(src)
-		if(disassembled || prob(40))
-			var/obj/structure/firelock_frame/unbuilt_lock = new assemblytype(targetloc)
-			if(disassembled)
-				unbuilt_lock.constructionStep = CONSTRUCTION_PANEL_OPEN
-			else
-				unbuilt_lock.constructionStep = CONSTRUCTION_NO_CIRCUIT
-				unbuilt_lock.update_integrity(unbuilt_lock.max_integrity * 0.5)
-			unbuilt_lock.update_appearance()
+/obj/machinery/door/firedoor/on_deconstruction(disassembled)
+	var/turf/targetloc = get_turf(src)
+	if(disassembled || prob(40))
+		var/obj/structure/firelock_frame/unbuilt_lock = new assemblytype(targetloc)
+		if(disassembled)
+			unbuilt_lock.constructionStep = CONSTRUCTION_PANEL_OPEN
 		else
-			new /obj/item/electronics/firelock (targetloc)
-	qdel(src)
+			unbuilt_lock.constructionStep = CONSTRUCTION_NO_CIRCUIT
+			unbuilt_lock.update_integrity(unbuilt_lock.max_integrity * 0.5)
+		unbuilt_lock.update_appearance()
+	else
+		new /obj/item/electronics/firelock (targetloc)
 
 /obj/machinery/door/firedoor/Moved(atom/old_loc, movement_dir, forced, list/old_locs, momentum_change = TRUE)
 	. = ..()

@@ -9,7 +9,7 @@ at the cost of risking a vicious bite.**/
 	density = FALSE
 	///This var stores the hidden item that might be able to be retrieved from the trap
 	var/obj/item/hidden_item
-	///This var determines if there is a chance to recieve a bite when sticking your hand into the water.
+	///This var determines if there is a chance to receive a bite when sticking your hand into the water.
 	var/critter_infested = TRUE
 	///weighted loot table for what loot you can find inside the moisture trap.
 	///the actual loot isn't that great and should probably be improved and expanded later.
@@ -24,9 +24,8 @@ at the cost of risking a vicious bite.**/
 		/obj/item/restraints/handcuffs/cable/green = 1,
 		/obj/item/restraints/handcuffs/cable/pink = 1,
 		/obj/item/restraints/handcuffs/alien = 2,
-		/obj/item/coin/bananium = 9,
+		/obj/item/coin/bananium = 10,
 		/obj/item/knife/butcher = 5,
-		/obj/item/coin/mythril = 1,
 	)
 
 
@@ -305,7 +304,7 @@ at the cost of risking a vicious bite.**/
 		return TRUE
 
 /obj/structure/steam_vent/deconstruct(disassembled = TRUE)
-	if(!(flags_1 & NODECONSTRUCT_1))
+	if(!(obj_flags & NO_DECONSTRUCTION))
 		new /obj/item/stack/sheet/iron(loc, 1)
 		new /obj/item/stock_parts/water_recycler(loc, 1)
 	qdel(src)

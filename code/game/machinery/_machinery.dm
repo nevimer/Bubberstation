@@ -136,8 +136,6 @@
 	var/market_verb = "Customer"
 	var/payment_department = ACCOUNT_ENG
 
-	/// For storing and overriding ui id
-	var/tgui_id // ID of TGUI interface
 	///Is this machine currently in the atmos machinery queue?
 	var/atmos_processing = FALSE
 	/// world.time of last use by [/mob/living]
@@ -198,9 +196,8 @@
 	end_processing()
 
 	clear_components()
-	dump_contents()
-
 	unset_static_power()
+
 	return ..()
 
 /**
@@ -669,6 +666,9 @@
 /obj/machinery/ui_act(action, list/params)
 	add_fingerprint(usr)
 	update_last_used(usr)
+	if(isAI(usr) && !GLOB.cameranet.checkTurfVis(get_turf(src))) //We check if they're an AI specifically here, so borgs can still access off-camera stuff.
+		to_chat(usr, span_warning("You can no longer connect to this device!"))
+		return FALSE
 	return ..()
 
 /obj/machinery/Topic(href, href_list)
@@ -759,11 +759,11 @@
 		return
 	update_last_used(user)
 
-/obj/machinery/tool_act(mob/living/user, obj/item/tool, tool_type, is_right_clicking)
+/obj/machinery/item_interaction(mob/living/user, obj/item/tool, list/modifiers, is_right_clicking)
 	if(SEND_SIGNAL(user, COMSIG_TRY_USE_MACHINE, src) & COMPONENT_CANT_USE_MACHINE_TOOLS)
-		return TOOL_ACT_MELEE_CHAIN_BLOCKING
+		return ITEM_INTERACT_ANY_BLOCKER
 	. = ..()
-	if(. & TOOL_ACT_SIGNAL_BLOCKING)
+	if(. & ITEM_INTERACT_BLOCKING)
 		return
 	update_last_used(user)
 
@@ -799,7 +799,7 @@
 	SEND_SIGNAL(src, COMSIG_MACHINERY_REFRESH_PARTS)
 
 /obj/machinery/proc/default_pry_open(obj/item/crowbar, close_after_pry = FALSE, open_density = FALSE, closed_density = TRUE)
-	. = !(state_open || panel_open || is_operational || (flags_1 & NODECONSTRUCT_1)) && crowbar.tool_behaviour == TOOL_CROWBAR
+	. = !(state_open || panel_open || is_operational || (obj_flags & NO_DECONSTRUCTION)) && crowbar.tool_behaviour == TOOL_CROWBAR
 	if(!.)
 		return
 	crowbar.play_tool_sound(src, 50)
@@ -809,18 +809,22 @@
 		close_machine(density_to_set = closed_density)
 
 /obj/machinery/proc/default_deconstruction_crowbar(obj/item/crowbar, ignore_panel = 0, custom_deconstruct = FALSE)
-	. = (panel_open || ignore_panel) && !(flags_1 & NODECONSTRUCT_1) && crowbar.tool_behaviour == TOOL_CROWBAR
+	. = (panel_open || ignore_panel) && !(obj_flags & NO_DECONSTRUCTION) && crowbar.tool_behaviour == TOOL_CROWBAR
 	if(!. || custom_deconstruct)
 		return
 	crowbar.play_tool_sound(src, 50)
 	deconstruct(TRUE)
 
 /obj/machinery/deconstruct(disassembled = TRUE)
-	if(flags_1 & NODECONSTRUCT_1)
+	SHOULD_NOT_OVERRIDE(TRUE)
+
+	if(obj_flags & NO_DECONSTRUCTION)
+		dump_contents() //drop everything inside us
 		return ..() //Just delete us, no need to call anything else.
 
-	on_deconstruction()
+	on_deconstruction(disassembled)
 	if(!LAZYLEN(component_parts))
+		dump_contents() //drop everything inside us
 		return ..() //we don't have any parts.
 	spawn_frame(disassembled)
 
@@ -839,8 +843,12 @@
 						continue
 					var/obj/item/stack/stack_path = component
 					new stack_path(loc, board.req_components[component])
-
 	LAZYCLEARLIST(component_parts)
+
+	//drop everything inside us. we do this last to give machines a chance
+	//to handle their contents before we dump them
+	dump_contents()
+
 	return ..()
 
 /**
@@ -854,7 +862,7 @@
 /obj/machinery/proc/spawn_frame(disassembled)
 	var/obj/structure/frame/machine/new_frame = new /obj/structure/frame/machine(loc)
 
-	new_frame.state = 2
+	new_frame.state = FRAME_STATE_WIRED
 
 	// If the new frame shouldn't be able to fit here due to the turf being blocked, spawn the frame deconstructed.
 	if(isturf(loc))
@@ -864,7 +872,7 @@
 			new_frame.deconstruct(disassembled)
 			return
 
-	new_frame.icon_state = "box_1"
+	new_frame.update_appearance(UPDATE_ICON_STATE)
 	. = new_frame
 	new_frame.set_anchored(anchored)
 	if(!disassembled)
@@ -874,7 +882,7 @@
 
 /obj/machinery/atom_break(damage_flag)
 	. = ..()
-	if(!(machine_stat & BROKEN) && !(flags_1 & NODECONSTRUCT_1))
+	if(!(machine_stat & BROKEN) && !(obj_flags & NO_DECONSTRUCTION))
 		set_machine_stat(machine_stat | BROKEN)
 		SEND_SIGNAL(src, COMSIG_MACHINERY_BROKEN, damage_flag)
 		update_appearance()
@@ -921,7 +929,7 @@
 		qdel(atom_part)
 
 /obj/machinery/proc/default_deconstruction_screwdriver(mob/user, icon_state_open, icon_state_closed, obj/item/screwdriver)
-	if((flags_1 & NODECONSTRUCT_1) || screwdriver.tool_behaviour != TOOL_SCREWDRIVER)
+	if((obj_flags & NO_DECONSTRUCTION) || screwdriver.tool_behaviour != TOOL_SCREWDRIVER)
 		return FALSE
 
 	screwdriver.play_tool_sound(src, 50)
@@ -948,7 +956,7 @@
 	if(!istype(replacer_tool))
 		return FALSE
 
-	if((flags_1 & NODECONSTRUCT_1) && !replacer_tool.works_from_distance)
+	if((obj_flags & NO_DECONSTRUCTION) && !replacer_tool.works_from_distance)
 		return FALSE
 
 	var/shouldplaysound = FALSE
@@ -1126,8 +1134,14 @@
 /obj/machinery/proc/on_construction(mob/user)
 	return
 
-//called on deconstruction before the final deletion
-/obj/machinery/proc/on_deconstruction()
+/**
+ * called on deconstruction before the final deletion
+ * Arguments
+ *
+ * * disassembled - if TRUE means we used tools to deconstruct it, FALSE means it got destroyed by other means
+ */
+/obj/machinery/proc/on_deconstruction(disassembled)
+	PROTECTED_PROC(TRUE)
 	return
 
 /obj/machinery/proc/can_be_overridden()

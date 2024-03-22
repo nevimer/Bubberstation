@@ -2,7 +2,7 @@
 
 /obj/machinery/power/solar/deployable
 	icon = 'modular_skyrat/modules/colony_fabricator/icons/machines.dmi'
-	flags_1 = NODECONSTRUCT_1
+	obj_flags = CAN_BE_HIT | NO_DECONSTRUCTION
 	/// The item we turn into when repacked
 	var/repacked_type = /obj/item/flatpacked_machine/solar
 
@@ -14,11 +14,10 @@
 /obj/machinery/power/solar/deployable/crowbar_act(mob/user, obj/item/I)
 	return
 
-/obj/machinery/power/solar/deployable/deconstruct(disassembled = TRUE)
+/obj/machinery/power/solar/deployable/on_deconstruction(disassembled)
 	var/obj/item/solar_assembly/assembly = locate() in src
 	if(assembly)
 		qdel(assembly)
-	return ..()
 
 // Solar panel deployable item
 
@@ -36,7 +35,7 @@
 
 /obj/machinery/power/tracker/deployable
 	icon = 'modular_skyrat/modules/colony_fabricator/icons/machines.dmi'
-	flags_1 = NODECONSTRUCT_1
+	obj_flags = CAN_BE_HIT | NO_DECONSTRUCTION
 	/// The item we turn into when repacked
 	var/repacked_type = /obj/item/flatpacked_machine/solar_tracker
 
@@ -48,11 +47,10 @@
 /obj/machinery/power/tracker/deployable/crowbar_act(mob/user, obj/item/item_acting)
 	return
 
-/obj/machinery/power/tracker/deployable/deconstruct(disassembled = TRUE)
+/obj/machinery/power/tracker/deployable/on_deconstruction(disassembled)
 	var/obj/item/solar_assembly/assembly = locate() in src
 	if(assembly)
 		qdel(assembly)
-	return ..()
 
 // Solar tracker deployable item
 

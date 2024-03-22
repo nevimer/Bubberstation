@@ -1,4 +1,3 @@
-#define PUNCH_STAMINA_MULTIPLIER 1.5 //BUBBER EDIT - original 2.6
 
 //Stamina threshold from which resisting a grab becomes hard
 #define STAMINA_THRESHOLD_HARD_RESIST 80
@@ -24,6 +23,7 @@
 
 // Damage modifiers
 #define OVERSIZED_HARM_DAMAGE_BONUS 5 /// Those with the oversized trait do 5 more damage.
+#define OVERSIZED_KICK_EFFECTIVENESS_BONUS 5 /// Increased unarmed_effectiveness/stun threshold on oversized kicks.
 
 #define FILTER_STAMINACRIT filter(type="drop_shadow", x=0, y=0, size=-3, color="#04080F")
 
