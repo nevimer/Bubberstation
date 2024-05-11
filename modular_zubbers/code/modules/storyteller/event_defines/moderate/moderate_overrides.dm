@@ -53,3 +53,7 @@
 /datum/round_event_control/portal_storm_syndicate
 	track = EVENT_TRACK_MODERATE
 	tags = list(TAG_COMBAT)
+
+/datum/round_event_control/wizard_dice
+	track = EVENT_TRACK_MODERATE
+	tags = list(TAG_COMBAT, TAG_COMMUNAL, TAG_DESTRUCTIVE)	
