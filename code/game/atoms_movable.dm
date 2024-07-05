@@ -723,6 +723,9 @@
 	if(loc != newloc)
 		if (!(direct & (direct - 1))) //Cardinal move
 			. = ..()
+		if(istype(src, /mob/living/))
+			var/mob/living/source = src
+			source.move_momentum()
 		else //Diagonal move, split it into cardinal moves
 			moving_diagonally = FIRST_DIAG_STEP
 			var/first_step_dir
