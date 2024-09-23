@@ -31,7 +31,6 @@ GLOBAL_PROTECT(vetted_list)
 		return
 	if(IsAdminAdvancedProcCall())
 		return
-
 	vetted_controller = new
 	vetted_controller.file_path_vetted = "[global.config.directory]/bubbers/vetted_players.txt"
 	ASYNC
@@ -44,13 +43,8 @@ GLOBAL_PROTECT(vetted_list)
 
 			vetted_controller.add_player(line, legacy = TRUE)
 			world.log << "Added [line] to vetted list."
-		var/datum/db_query/query_load_player_rank = SSdbcore.NewQuery("SELECT * FROM vetted_list")
-		if(!query_load_player_rank.warn_execute())
-			return
-		while(query_load_player_rank.NextRow())
-			var/ckey = ckey(query_load_player_rank.item[1])
-			vetted_controller.add_player(ckey)
-			world.log << "Added [ckey] to vetted list."
+
+	RegisterSignal(vetted_controller, COMSIG_GLOB_MOB_LOGGED_IN, TYPE_PROC_REF(/datum/player_rank_controller/vetted, hotload))
 
 	loaded_vetted_sql = TRUE
 	return TRUE
@@ -61,6 +55,18 @@ GLOBAL_PROTECT(vetted_list)
 	for(var/ckey_ in GLOB.vetted_list_legacy)
 		add_player_to_sql(ckey_)
 
+/datum/player_rank_controller/vetted/proc/hotload(mob/user)
+	SIGNAL_HANDLER
+	ASYNC
+		var/datum/db_query/query_load_player_rank = SSdbcore.NewQuery("SELECT * FROM vetted_list WHERE ckey == '[user.client.ckey]'")
+		if(!query_load_player_rank.warn_execute())
+			return
+		while(query_load_player_rank.NextRow())
+			var/key_lookedup = ckey(query_load_player_rank.item[1])
+			add_player(key_lookedup)
+			world.log << "Added [key_lookedup] to vetted list."
+
+
 /datum/player_rank_controller/vetted/proc/add_player_to_sql(ckey, admin_mob)
 	var/ckey_admin = "Conversion Script"
 	var/mob/admin_who_added_client = admin_mob
@@ -68,8 +74,7 @@ GLOBAL_PROTECT(vetted_list)
 		ckey_admin = admin_who_added_client?.client?.ckey
 
 	var/datum/db_query/query_add_player_rank = SSdbcore.NewQuery(
-		"INSERT INTO vetted_list (ckey, admin_who_added) VALUES(:ckey, :admin_who_added) \
-		 ON DUPLICATE KEY UPDATE admin_who_added = :admin_who_added",
+		"INSERT INTO vetted_list (ckey, admin_who_added) VALUES(:ckey, :admin_who_added)",
 		list("ckey" = ckey, "admin_who_added" = ckey_admin),
 	)
 
@@ -100,6 +105,7 @@ ADMIN_VERB(convert_flatfile_vettedlist_to_sql, R_DEBUG, "Convert Vetted list to 
 	if(consent == "Yes")
 		SSplayer_ranks.vetted_controller.convert_all_to_sql()
 		message_admins("[usr] has forcefully converted the vetted list file to SQL.")
+
 ADMIN_VERB(add_vetted, R_ADMIN, "Add user to Vetted", "Adds a user to the vetted list", ADMIN_CATEGORY_MAIN)
 	var/user_adding = tgui_input_text(usr, "Whom is being added?", "Vetted List")
 	if(length(user_adding))
