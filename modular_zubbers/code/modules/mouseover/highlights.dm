@@ -141,3 +141,9 @@
 		client.mouseover = FALSE
 	else
 		client.mouseover = TRUE
+
+
+#undef add_vis_contents(A, B)
+#undef remove_vis_contents(A, B)
+#undef clear_vis_contents(A)
+#undef set_vis_contents(A, B)
